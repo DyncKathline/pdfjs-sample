@@ -2,7 +2,8 @@
   <div>
     <div id="outerContainer">
       <div class="toolbar">
-        <button @click="prev">上一页</button>
+        <button class="kl-button" @click="back">返回</button>
+        <button class="kl-button" @click="prev">上一页</button>
         <input
           type="number"
           class="page-number-input"
@@ -12,17 +13,21 @@
           @blur="webViewerPageNumberChanged(pageNum)"
         />
         <span class="page-num"> / {{ pageCount }}页</span>
-        <button @click="next">下一页</button>
-        <button @click="minus">缩小</button>
-        <button @click="addscale">放大</button>
-        <button @click="print">打印</button>
-        <input
-          class="pdf-choose"
-          type="file"
-          name="选择pdf文件"
-          id="pdfChoose"
-          @change="pdfChange"
-        />
+        <button class="kl-button" @click="next">下一页</button>
+        <button class="kl-button" @click="minus">缩小</button>
+        <button class="kl-button" @click="addscale">放大</button>
+        <button class="kl-button" @click="print">打印</button>
+        <div class="uploadContainer">
+          <button type="button" class="kl-button" @click="clickFile">
+            <span>选取文件</span>
+          </button>
+          <input
+            type="file"
+            id="file"
+            class="kl-upload_input"
+            @change="pdfChange"
+          />
+        </div>
       </div>
       <div id="viewerContainer">
         <div id="viewer" class="pdfViewer"></div>
@@ -47,11 +52,17 @@ import { PDFPrintServiceFactory, PDFPrintService } from "./pdf_print_service"; /
 import { AutomationEventBus, EventBus } from "./event_utils";
 
 export default {
+  props: {
+    src: {
+      type: String,
+      default: "",
+    },
+  },
   data() {
     return {
       CMAP_URL: "",
       CMAP_PACKED: true,
-      DEFAULT_URL: "/3.pdf",
+      DEFAULT_URL: "",
       ENABLE_XFA: true,
       SEARCH_FOR: "",
       SANDBOX_BUNDLE_SRC: null,
@@ -91,12 +102,13 @@ export default {
       const CMAP_URL = "../../node_modules/pdfjs-dist/cmaps/";
       const CMAP_PACKED = true;
 
-      const DEFAULT_URL = "/3.pdf";
+      const DEFAULT_URL = this.src; //"/3.pdf";
 
       const ENABLE_XFA = true;
       const SEARCH_FOR = ""; // try "Mozilla";
 
-      const SANDBOX_BUNDLE_SRC = "../../node_modules/pdfjs-dist/legacy/build/pdf.sandbox.js";//require("pdfjs-dist/legacy/build/pdf.sandbox.js");
+      const SANDBOX_BUNDLE_SRC =
+        "../../node_modules/pdfjs-dist/legacy/build/pdf.sandbox.js"; //require("pdfjs-dist/legacy/build/pdf.sandbox.js");
 
       const container = document.getElementById("viewerContainer");
       const viewer = document.getElementById("viewer");
@@ -199,47 +211,32 @@ export default {
         enableXfa: this.ENABLE_XFA,
       });
       loadingTask.promise.then(
-      pdfDocument => {
-        this.pdfDocument = pdfDocument;
-        this.pageNum = this.pdfViewer.currentPageNumber;
-        this.pageCount = pdfDocument.numPages;
-        // Document loaded, specifying document for the viewer and
-        // the (optional) linkService.
-        this.pdfViewer.setDocument(pdfDocument);
-        // this.pdfScriptingManager.setDocument(pdfDocument);
+        (pdfDocument) => {
+          this.pdfDocument = pdfDocument;
+          this.pageNum = 1;
+          this.pageCount = pdfDocument.numPages;
+          // Document loaded, specifying document for the viewer and
+          // the (optional) linkService.
+          this.pdfViewer.setDocument(pdfDocument);
+          // this.pdfScriptingManager.setDocument(pdfDocument);
 
-        this.pdfLinkService.setDocument(pdfDocument, null);
-      },
-      reason => {
-        let key = "loading_error";
-        if (reason instanceof InvalidPDFException) {
-          key = "invalid_file_error";
-        } else if (reason instanceof MissingPDFException) {
-          key = "missing_file_error";
-        } else if (reason instanceof UnexpectedResponseException) {
-          key = "unexpected_response_error";
+          this.pdfLinkService.setDocument(pdfDocument, null);
+        },
+        (reason) => {
+          let key = "loading_error";
+          if (reason.name === "InvalidPDFException") {
+            key = "invalid_file_error";
+          } else if (reason.name === "MissingPDFException") {
+            key = "missing_file_error";
+          } else if (reason.name === "UnexpectedResponseException") {
+            key = "unexpected_response_error";
+          }
+          console.error(reason);
         }
-      }
-    );
-      // (async () => {
-      //   const pdfDocument = await loadingTask.promise;
-      //   this.pdfDocument = pdfDocument;
-      //   this.pageNum = this.pdfViewer.currentPageNumber;
-      //   this.pageCount = pdfDocument.numPages;
-      //   // Document loaded, specifying document for the viewer and
-      //   // the (optional) linkService.
-      //   this.pdfViewer.setDocument(pdfDocument);
-
-      //   this.pdfLinkService.setDocument(pdfDocument, null);
-      // })();
-
-      // loadingTask.promise.then(function (pdfDocument) {
-      //   // Document loaded, specifying document for the viewer and
-      //   // the (optional) linkService.
-      //   pdfViewer.setDocument(pdfDocument);
-
-      //   pdfLinkService.setDocument(pdfDocument, null);
-      // });
+      );
+    },
+    clickFile() {
+      document.getElementById("file").click();
     },
     pdfChange(e) {
       /**
@@ -252,6 +249,9 @@ export default {
     },
     loadPdfJs(pdfResource) {
       this.getPdfDocument(pdfResource);
+    },
+    back() {
+      this.$emit("close");
     },
     addscale() {
       /**
@@ -298,7 +298,6 @@ export default {
       }
       window.print();
     },
-
     beforePrint() {
       if (this.printService) {
         // There is no way to suppress beforePrint/afterPrint events,
@@ -364,25 +363,104 @@ export default {
   height: 32px;
   padding: 0px 16px;
   background: rgba(103, 103, 103, 1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
+  left: 0;
+  right: 0;
+  // z-index: 9999;
+  cursor: default;
   .page-number-input {
-    width: 32px;
-    border: none;
-    border-radius: 2px;
-    padding: 2px 4px;
+    margin-left: 10px;
+    -webkit-appearance: none;
+    background-color: #fff;
+    background-image: none;
+    border-radius: 4px;
+    border: 1px solid #dcdfe6;
+    box-sizing: border-box;
+    color: #606266;
+    display: inline-block;
+    font-size: inherit;
+    width: 46px;
+    height: 28px;
+    line-height: 28px;
+    outline: none;
+    padding: 0 5px;
+    transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
   }
   .page-num {
     color: white;
-  }
-  button {
+    display: inline-block;
+    font-size: 13px;
+    min-width: 35.5px;
+    height: 28px;
+    line-height: 28px;
+    vertical-align: top;
+    box-sizing: border-box;
     margin: 0 10px;
-    cursor: pointer;
   }
-  .pdf-choose {
+  .kl-button + .kl-button {
+    margin-left: 10px;
+  }
+  .kl-button {
+    display: inline-block;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    background: #fff;
+    border: 1px solid #dcdfe6;
+    color: #606266;
+    -webkit-appearance: none;
+    text-align: center;
+    box-sizing: border-box;
+    outline: none;
+    margin: 0;
+    transition: 0.1s;
+    font-weight: 500;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    padding: 6px 10px;
+    font-size: 14px;
+    border-radius: 4px;
+  }
+  .uploadContainer {
     margin-left: 100px;
-    color: white;
+    display: inline-block;
+    position: relative;
+    .kl-button {
+      // color: white;
+      color: #606266;
+      -webkit-appearance: none;
+      background-color: #fff;
+      background-image: none;
+      border-radius: 4px;
+      border: 1px solid #dcdfe6;
+      box-sizing: border-box;
+      display: inline-block;
+      font-size: inherit;
+      height: 28px;
+      line-height: 28px;
+      font-size: 14px;
+      outline: none;
+      padding: 0 5px;
+      transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+    }
+    .kl-upload_input {
+      display: none;
+    }
+    #print-flie {
+      color: white;
+      display: inline-block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 13px;
+      min-width: 35.5px;
+      height: 28px;
+      line-height: 28px;
+      vertical-align: top;
+      box-sizing: border-box;
+      margin: 0 10px;
+    }
   }
 }
 #viewerContainer {

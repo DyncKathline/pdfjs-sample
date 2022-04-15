@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <PdfViewer/>
+    <PdfViewer src="/3.pdf"/>
   </div>
 </template>
 
