@@ -2,7 +2,7 @@
   <div>
     <div id="outerContainer">
       <div class="toolbar">
-        <button class="kl-button" @click="back">返回</button>
+        <button v-if="backBtn" class="kl-button" @click="back">返回</button>
         <button class="kl-button" @click="prev">上一页</button>
         <input
           type="number"
@@ -16,8 +16,8 @@
         <button class="kl-button" @click="next">下一页</button>
         <button class="kl-button" @click="minus">缩小</button>
         <button class="kl-button" @click="addscale">放大</button>
-        <button class="kl-button" @click="print">打印</button>
-        <div class="uploadContainer">
+        <button v-if="printBtn" class="kl-button" @click="print">打印</button>
+        <div v-if="fileBtn" class="uploadContainer">
           <button type="button" class="kl-button" @click="clickFile">
             <span>选取文件</span>
           </button>
@@ -57,6 +57,22 @@ export default {
       type: String,
       default: "",
     },
+    singlePage: {
+      type: Boolean,
+      default: false,
+    },
+    backBtn: {
+      type: Boolean,
+      default: true,
+    },
+    printBtn: {
+      type: Boolean,
+      default: true,
+    },
+    fileBtn: {
+      type: Boolean,
+      default: true,
+    }
   },
   data() {
     return {
@@ -139,7 +155,26 @@ export default {
       //   sandboxBundleSrc: SANDBOX_BUNDLE_SRC,
       // });
 
-      const pdfViewer = new PDFViewer({
+      const pdfViewer = this.singlePage ? 
+      new PDFSinglePageViewer({
+        container,
+        viewer,
+        eventBus,
+        linkService: pdfLinkService,
+        findController: pdfFindController,
+        // scriptingManager: pdfScriptingManager,
+        enableScripting: true, // Only necessary in PDF.js version 2.10.377 and below.
+        renderer: "canvas",
+        l10n: this.l10n,
+        textLayerMode: 1,
+        annotationMode: 2,
+        imageResourcesPath: "./images/",
+        enablePrintAutoRotate: true,
+        useOnlyCssZoom: false,
+        maxCanvasPixels: 16777216,
+        enablePermissions: false,
+      }) : 
+      new PDFViewer({
         container,
         viewer,
         eventBus,
@@ -232,6 +267,7 @@ export default {
             key = "unexpected_response_error";
           }
           console.error(reason);
+          this.$emit("error", reason);
         }
       );
     },

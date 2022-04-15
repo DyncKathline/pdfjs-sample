@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <PdfViewer src="/3.pdf"/>
+    <PdfViewer src="/3.pdf" :singlePage="true"/>
   </div>
 </template>
 
